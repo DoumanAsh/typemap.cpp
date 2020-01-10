@@ -2,4 +2,4 @@
 
 Map implementation using type info as keys
 
-![](https://github.com/DoumanAsh/async-timer/workflows/C++/badge.svg)
+[![Build](https://github.com/DoumanAsh/typemap.cpp/workflows/C++/badge.svg)](https://github.com/DoumanAsh/typemap.cpp/actions?query=workflow%3AC%2B%2B)
