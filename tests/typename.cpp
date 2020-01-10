@@ -1,11 +1,14 @@
 #include <catch.hpp>
 
-#include <iostream>
 #include <typemap.hpp>
+
+#include <string>
+#include <array>
 
 TEST_CASE("it works") {
     type::Map map;
 
+    REQUIRE(map.empty());
     REQUIRE(map.get<int>() == nullptr);
     REQUIRE(!map.has<int>());
 
@@ -14,10 +17,14 @@ TEST_CASE("it works") {
     REQUIRE(*map.get<int>() == 1);
     REQUIRE(map.has<int>());
 
+    REQUIRE(!map.empty());
+
     REQUIRE(!map.emplace<char>('a').has_value());
+    REQUIRE(!map.emplace<std::string>("lolka").has_value());
 
     REQUIRE(map.get<char>() != nullptr);
     REQUIRE(*map.get<char>() == 'a');
+    REQUIRE(*map.get<std::string>() == "lolka");
 
     REQUIRE(*map.emplace<char>('b') == 'a');
     REQUIRE(*map.remove<char>() == 'b');

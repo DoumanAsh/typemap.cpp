@@ -100,6 +100,21 @@ class Map {
             return value;
         }
     }
+
+    /**
+     * Clears map.
+     */
+    void clear() noexcept {
+        this->storage.clear();
+    }
+
+
+    /**
+     * Checks whether map is empty
+     */
+    bool empty() noexcept {
+        return this->storage.empty();
+    }
 };
 
 }
