@@ -1,0 +1,21 @@
+name: C++
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: configure
+      run: mkdir build && cd build && cmake .. -DUNIT_TEST=ON
+    - name: build
+      run: cmake --build build
+    - name: test
+      run: build/dist/bin/utest

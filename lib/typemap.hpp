@@ -74,7 +74,7 @@ class Map {
         auto search = this->storage.find(std::type_index(typeid(T)));
 
         if (search == this->storage.end()) {
-            auto result = this->storage.emplace(std::make_pair(std::type_index(typeid(T)), std::unique_ptr<T, void (*)(void*)>(new T(std::forward<Args>(args)...), type_deleter<T>) ) );
+            this->storage.emplace(std::make_pair(std::type_index(typeid(T)), std::unique_ptr<T, void (*)(void*)>(new T(std::forward<Args>(args)...), type_deleter<T>) ) );
             return {};
         } else {
             std::optional<T> value;
