@@ -29,6 +29,22 @@ class Map {
         Map() = default;
 
     /**
+     * Retrieves element from map, inserting default value if no value is present.
+     */
+    template<class T>
+    T& get_or_default() {
+        //Seems like default insertion is not available for pointers :(
+        auto search = this->storage.find(std::type_index(typeid(T)));
+
+        if (search == this->storage.end()) {
+            auto res = this->storage.emplace(std::make_pair(std::type_index(typeid(T)), std::unique_ptr<T, void (*)(void*)>(new T(), type_deleter<T>) ) );
+            return *(static_cast<T*>(res.first->second.get()));
+        } else {
+            return *(static_cast<T*>(search->second.get()));
+        }
+    }
+
+    /**
      * Retrieves element from map
      *
      * @note std::optional<T&> is not supported, so don't use it.
