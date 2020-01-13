@@ -5,8 +5,11 @@
 #include <typeindex>
 #include <memory>
 #include <optional>
+#include <type_traits>
 
 namespace type {
+
+using DeleterFn = void (*)(void *);
 
 /**
  * Simple deleter, that allows to delete void pointer with provided type.
@@ -17,6 +20,14 @@ template<typename T>
 void type_deleter(void* val) {
     //Deleter is not invoked if pointer is null
     delete static_cast<T*>(val);
+}
+
+/**
+ * Creates type erased unique_ptr, by storing exact type in custom deleter
+ */
+template <typename T, class... Args>
+inline std::unique_ptr<void, DeleterFn> make_dyn_ptr(Args &&... args) {
+  return std::unique_ptr<T, DeleterFn>(new T(std::forward<Args>(args)...), type_deleter<T>);
 }
 
 /**
@@ -33,11 +44,13 @@ class Map {
      */
     template<class T>
     T& get_or_default() {
+        static_assert(std::is_default_constructible<T>::value, "T lacks default constructor");
+
         //Seems like default insertion is not available for pointers :(
         auto search = this->storage.find(std::type_index(typeid(T)));
 
         if (search == this->storage.end()) {
-            auto res = this->storage.emplace(std::make_pair(std::type_index(typeid(T)), std::unique_ptr<T, void (*)(void*)>(new T(), type_deleter<T>) ) );
+            auto res = this->storage.emplace(std::make_pair(std::type_index(typeid(T)), make_dyn_ptr<T>()));
             return *(static_cast<T*>(res.first->second.get()));
         } else {
             return *(static_cast<T*>(search->second.get()));
@@ -87,10 +100,12 @@ class Map {
      */
     template<class T, class... Args>
     std::optional<T> emplace(Args&&... args) {
+        static_assert(std::is_constructible<T, Args...>::value, "T cannot be constructed with provided arguments");
+
         auto search = this->storage.find(std::type_index(typeid(T)));
 
         if (search == this->storage.end()) {
-            this->storage.emplace(std::make_pair(std::type_index(typeid(T)), std::unique_ptr<T, void (*)(void*)>(new T(std::forward<Args>(args)...), type_deleter<T>) ) );
+            this->storage.emplace(std::make_pair(std::type_index(typeid(T)), make_dyn_ptr<T>(std::forward<Args>(args)...)));
             return {};
         } else {
             std::optional<T> value;
@@ -106,6 +121,8 @@ class Map {
      */
     template<class T>
     std::optional<T> remove() {
+        static_assert(std::is_move_constructible<T>::value, "T cannot be moved out");
+
         auto search = this->storage.find(std::type_index(typeid(T)));
 
         if (search == this->storage.end()) {
