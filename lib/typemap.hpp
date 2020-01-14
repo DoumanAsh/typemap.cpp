@@ -9,6 +9,28 @@
 
 namespace type {
 
+namespace internal {
+
+template <typename Type>
+struct IdTag {
+  constexpr static char value = 0;
+};
+
+template <typename Type>
+constexpr char IdTag<Type>::value;
+
+}
+
+template <typename Type>
+inline constexpr void* Id = &internal::IdTag<Type>::value;
+
+template<typename Type>
+constexpr inline uintptr_t id() {
+  using NormalizedType = typename std::remove_cv<typename std::remove_reference<Type>::type>::type;
+  return reinterpret_cast<uintptr_t>(&internal::IdTag<NormalizedType>::value);
+}
+
+
 using DeleterFn = void (*)(void *);
 
 /**
@@ -34,7 +56,7 @@ inline std::unique_ptr<void, DeleterFn> make_dyn_ptr(Args &&... args) {
  * Type-safe map, that uses type as key.
  */
 class Map {
-    std::unordered_map<std::type_index, std::unique_ptr<void, void (*)(void*)>> storage;
+    std::unordered_map<uintptr_t, std::unique_ptr<void, void (*)(void*)>> storage;
 
     public:
         Map() = default;
@@ -47,10 +69,10 @@ class Map {
         static_assert(std::is_default_constructible<T>::value, "T lacks default constructor");
 
         //Seems like default insertion is not available for pointers :(
-        auto search = this->storage.find(std::type_index(typeid(T)));
+        auto search = this->storage.find(id<T>());
 
         if (search == this->storage.end()) {
-            auto res = this->storage.emplace(std::make_pair(std::type_index(typeid(T)), make_dyn_ptr<T>()));
+            auto res = this->storage.emplace(std::make_pair(id<T>(), make_dyn_ptr<T>()));
             return *(static_cast<T*>(res.first->second.get()));
         } else {
             return *(static_cast<T*>(search->second.get()));
@@ -66,7 +88,7 @@ class Map {
      */
     template<class T>
     T* get() {
-        auto search = this->storage.find(std::type_index(typeid(T)));
+        auto search = this->storage.find(id<T>());
         if (search == this->storage.end()) {
             return nullptr;
         } else {
@@ -91,29 +113,23 @@ class Map {
      */
     template<class T>
     bool has() const {
-        auto search = this->storage.find(std::type_index(typeid(T)));
+        auto search = this->storage.find(id<T>());
         return search != this->storage.end();
     }
 
     /**
-     * Inserts element, returning previous one, if any
+     * Constructs new element in place, returning reference to it and whether element was constructed.
+     *
+     * If element already exists, then it returns reference to existing one.
+     *
+     * Constructs new element only, if there is no such element T inside map (implies equality)
      */
-    template<class T, class... Args>
-    std::optional<T> emplace(Args&&... args) {
+    template <class T, class... Args>
+    std::pair<T &, bool> emplace(Args &&... args) {
         static_assert(std::is_constructible<T, Args...>::value, "T cannot be constructed with provided arguments");
 
-        auto search = this->storage.find(std::type_index(typeid(T)));
-
-        if (search == this->storage.end()) {
-            this->storage.emplace(std::make_pair(std::type_index(typeid(T)), make_dyn_ptr<T>(std::forward<Args>(args)...)));
-            return {};
-        } else {
-            std::optional<T> value;
-            value.emplace(std::forward<Args>(args)...);
-
-            std::swap(*value, *static_cast<T*>(search->second.get()));
-            return value;
-        }
+        auto res = this->storage.emplace(std::make_pair(id<T>(), make_dyn_ptr<T>(std::forward<Args>(args)...)));
+        return std::pair<T &, bool>(*(static_cast<T *>(res.first->second.get())), res.second);
     }
 
     /**
@@ -123,7 +139,7 @@ class Map {
     std::optional<T> remove() {
         static_assert(std::is_move_constructible<T>::value, "T cannot be moved out");
 
-        auto search = this->storage.find(std::type_index(typeid(T)));
+        auto search = this->storage.find(id<T>());
 
         if (search == this->storage.end()) {
             return {};
