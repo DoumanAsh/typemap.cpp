@@ -21,9 +21,6 @@ constexpr char IdTag<Type>::value;
 
 }
 
-template <typename Type>
-inline constexpr void* Id = &internal::IdTag<Type>::value;
-
 template<typename Type>
 constexpr inline uintptr_t id() {
   using NormalizedType = typename std::remove_cv<typename std::remove_reference<Type>::type>::type;
