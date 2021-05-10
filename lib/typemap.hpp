@@ -22,9 +22,9 @@ constexpr char IdTag<Type>::value;
 }
 
 template<typename Type>
-constexpr inline uintptr_t id() {
+constexpr inline const char* id() {
   using NormalizedType = typename std::remove_cv<typename std::remove_reference<Type>::type>::type;
-  return reinterpret_cast<uintptr_t>(&internal::IdTag<NormalizedType>::value);
+  return &internal::IdTag<NormalizedType>::value;
 }
 
 
@@ -53,7 +53,7 @@ inline std::unique_ptr<void, DeleterFn> make_dyn_ptr(Args &&... args) {
  * Type-safe map, that uses type as key.
  */
 class Map {
-    std::unordered_map<uintptr_t, std::unique_ptr<void, void (*)(void*)>> storage;
+    std::unordered_map<const char*, std::unique_ptr<void, void (*)(void*)>> storage;
 
     public:
         Map() = default;
